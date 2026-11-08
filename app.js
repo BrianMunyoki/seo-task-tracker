@@ -5,7 +5,8 @@
 const STORAGE_KEY = "seo-task-tracker";
 const CATEGORIES = ["Strategy", "Technical SEO", "Onsite Optimization", "Link Building", "AEO"];
 const STATUSES = { todo: "To Do", doing: "Doing", done: "Done", blocked: "Blocked" };
-const POINTS = [1, 2, 3, 5, 8, 13, 21]; // Fibonacci story points
+const POINTS = [1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233]; // Fibonacci story points
+const PROGRESS_STEPS = [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100];
 
 let data = load();
 let view = "sprint";
@@ -97,6 +98,7 @@ const taskNo = (t) => "#" + t.id;
 const getTask = (id) => data.tasks.find((t) => t.id === id);
 const getSprint = (id) => data.sprints.find((s) => s.id === id);
 const currentSprint = () => getSprint(data.currentSprintId);
+const nextTaskNumber = () => Math.max(data.nextTaskId || 1, ...data.tasks.map((t) => t.id + 1));
 const isVisible = (t) => !t.showFrom || t.showFrom <= today(); // scheduled tasks stay hidden until their date
 const inCategory = (t) => categoryFilter === "All" || t.category === categoryFilter;
 const inStatus = (t) => statusFilter === "All" || t.status === statusFilter;
@@ -116,7 +118,7 @@ function escapeHtml(text) {
 function linkify(text) {
   return escapeHtml(text)
     .replace(/(^|\s)#(\d+)\b/g, (match, space, id) =>
-      getTask(Number(id)) ? `${space}<span class="task-link" data-open="${id}">#${id}</span>` : match
+      `${space}<span class="task-link" data-open="${id}">#${id}</span>`
     )
     .replace(/\n/g, "<br>");
 }
@@ -291,7 +293,7 @@ function renderAll() {
 // ---------- task modal ----------
 function openTask(id, defaults = {}) {
   const existing = id ? getTask(id) : null;
-  if (id && !existing) return alert("Task #" + id + " doesn't exist");
+  if (id && !existing) return alert("Task #" + id + " is not available");
 
   editing = existing
     ? JSON.parse(JSON.stringify(existing))
@@ -306,20 +308,18 @@ function openTask(id, defaults = {}) {
 function renderModal() {
   const t = editing;
   const sprint = currentSprint();
-  const linked = t.links.map(getTask).filter(Boolean);
-  const linkedFrom = t.id ? data.tasks.filter((o) => o.links.includes(t.id)) : [];
 
   $("#modal").innerHTML = `
     <form id="taskForm">
       <div class="modal-body">
-        <h2>${t.id ? "Task " + taskNo(t) : "New task #" + data.nextTaskId}</h2>
+        <h2>${t.id ? "Task " + taskNo(t) : "New task #" + nextTaskNumber()}</h2>
         <div class="field"><label>Title</label><input name="title" value="${escapeHtml(t.title)}" required></div>
         <div class="field"><label>Status</label>
           <div class="pill-group">${Object.entries(STATUSES).map(([k, v]) => `<label><input type="radio" name="status" value="${k}" ${t.status === k ? "checked" : ""}> ${v}</label>`).join("")}</div>
         </div>
         <div class="grid">
           <div class="field"><label>Progress %</label>
-            <input type="number" name="progress" min="0" max="100" value="${t.progress}" ${t.status === "todo" || t.status === "done" ? "disabled" : ""}>
+            <select name="progress" ${t.status === "todo" || t.status === "done" ? "disabled" : ""}>${PROGRESS_STEPS.map((p) => `<option value="${p}" ${Math.round(t.progress / 10) * 10 === p ? "selected" : ""}>${p}%</option>`).join("")}</select>
           </div>
           <div class="field"><label>Story points</label>
             <select name="points"><option value="0">-</option>${POINTS.map((p) => `<option ${t.points === p ? "selected" : ""}>${p}</option>`).join("")}</select>
@@ -339,11 +339,6 @@ function renderModal() {
         <div class="field"><label>Description (type #12 to link task 12)</label>
           <textarea name="desc" rows="4">${escapeHtml(t.desc)}</textarea>
           ${t.desc ? `<div class="muted">${linkify(t.desc)}</div>` : ""}
-        </div>
-        <div class="field"><label>Linked tasks (task numbers, e.g. 3, 7)</label>
-          <input name="links" value="${t.links.join(", ")}">
-          ${linked.map((l) => `<div><span class="task-link" data-open="${l.id}">${taskNo(l)}</span> ${escapeHtml(l.title)}</div>`).join("")}
-          ${linkedFrom.map((l) => `<div class="muted">Linked from <span class="task-link" data-open="${l.id}">${taskNo(l)}</span> ${escapeHtml(l.title)}</div>`).join("")}
         </div>
         <div class="field"><label>Status updates</label>
           <textarea name="newNote" rows="2" placeholder="Add a status update..."></textarea>
@@ -447,7 +442,7 @@ function saveTask(form) {
   t.showFrom = f.showFrom.value;
   t.sprintId = f.sprintId.value ? Number(f.sprintId.value) : null;
   t.desc = f.desc.value;
-  t.links = (f.links.value.match(/\d+/g) || []).map(Number).filter((n) => n !== t.id && getTask(n));
+  t.links = t.links || [];
   t.progress = Math.max(0, Math.min(100, Number(f.progress.value) || 0));
   setStatus(t, f.status.value);
   if (f.newNote.value.trim()) t.notes.push({ date: new Date().toLocaleString(), text: f.newNote.value.trim() });
@@ -455,7 +450,8 @@ function saveTask(form) {
   if (t.id) {
     data.tasks = data.tasks.map((x) => (x.id === t.id ? t : x));
   } else {
-    t.id = data.nextTaskId++;
+    t.id = nextTaskNumber();
+    data.nextTaskId = t.id + 1;
     data.tasks.push(t);
   }
   $("#modal").close();
@@ -478,7 +474,7 @@ function openCloseSprint() {
               <tr data-task="${t.id}">
                 <td>${taskNo(t)} ${escapeHtml(t.title)}</td>
                 <td><select class="pts"><option value="0">-</option>${POINTS.map((p) => `<option ${t.points === p ? "selected" : ""}>${p}</option>`).join("")}</select></td>
-                <td><input class="pct" type="number" min="0" max="99" value="${t.progress}" style="width:60px"></td>
+                <td><select class="pct">${PROGRESS_STEPS.filter((p) => p < 100).map((p) => `<option value="${p}" ${Math.round(t.progress / 10) * 10 === p ? "selected" : ""}>${p}%</option>`).join("")}</select></td>
                 <td><select class="dest"><option value="next">Next sprint</option><option value="backlog">Full backlog</option></select></td>
               </tr>`).join("")}
           </table>` : `<p>All tasks are done.</p>`}
@@ -537,6 +533,7 @@ document.addEventListener("click", (e) => {
     return save();
   }
   if (openEl) {
+    if (!getTask(Number(openEl.dataset.open))) return alert("Task #" + openEl.dataset.open + " is not available");
     if ($("#modal").open) $("#modal").close();
     return openTask(Number(openEl.dataset.open));
   }
@@ -599,8 +596,10 @@ document.addEventListener("submit", (e) => {
 
   if (form.id === "quickAddForm") {
     const f = form.elements;
+    const id = nextTaskNumber();
+    data.nextTaskId = id + 1;
     data.tasks.push({
-      id: data.nextTaskId++, title: f.title.value.trim(), desc: "", category: f.category.value,
+      id, title: f.title.value.trim(), desc: "", category: f.category.value,
       status: "todo", progress: 0, points: Number(f.points.value), deadline: "", showFrom: "",
       sprintId: null, links: [], notes: [], files: [],
     });
