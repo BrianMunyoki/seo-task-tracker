@@ -70,6 +70,12 @@ footer { display: flex; gap: 8px; align-items: center; padding: 10px 24px 30px; 
 @media (max-width: 800px) { .board, .grid { grid-template-columns: 1fr 1fr; } }
 
 .category-filter { display: flex; gap: 8px; flex-wrap: wrap; padding: 14px 24px 0; }
-.category-filter label { display: flex; align-items: center; gap: 6px; padding: 6px 14px; background: #fff; border: 1px solid var(--line); border-radius: 999px; font-weight: 600; cursor: pointer; }
-.category-filter input { accent-color: var(--red); margin: 0; }
-.category-filter label:has(input:checked) { border-color: var(--red); background: var(--red-soft); color: var(--red-dark); }
+.category-filter label, .pill-group label { display: flex; align-items: center; gap: 6px; padding: 6px 14px; background: #fff; border: 1px solid var(--line); border-radius: 999px; font-weight: 600; cursor: pointer; }
+.category-filter input, .pill-group input { accent-color: var(--red); margin: 0; }
+.category-filter label:has(input:checked), .pill-group label:has(input:checked) { border-color: var(--red); background: var(--red-soft); color: var(--red-dark); }
+
+#statusFilter { padding-top: 8px; }
+.pill-group { display: flex; gap: 8px; flex-wrap: wrap; }
+.category-filter label:hover, .pill-group label:hover { border-color: var(--red); }
+.field .pill-group label { display: flex; margin: 0; font-size: 13px; }
+.field .pill-group input { width: auto; }

@@ -10,6 +10,7 @@ const POINTS = [1, 2, 3, 5, 8, 13, 21]; // Fibonacci story points
 let data = load();
 let view = "sprint";
 let categoryFilter = "All";
+let statusFilter = "All";
 let editing = null; // task currently open in the modal
 let online = false; // true when the backend is reachable
 let saveTimer = null;
@@ -98,6 +99,7 @@ const getSprint = (id) => data.sprints.find((s) => s.id === id);
 const currentSprint = () => getSprint(data.currentSprintId);
 const isVisible = (t) => !t.showFrom || t.showFrom <= today(); // scheduled tasks stay hidden until their date
 const inCategory = (t) => categoryFilter === "All" || t.category === categoryFilter;
+const inStatus = (t) => statusFilter === "All" || t.status === statusFilter;
 const isOverdue = (t) => t.deadline && t.status !== "done" && t.deadline < today();
 
 function addDays(dateStr, days) {
@@ -208,7 +210,7 @@ function renderSprint() {
       <div class="progress"><div style="width:${s.avg}%"></div></div>
     </div>
     <div class="board">
-      ${Object.entries(STATUSES).map(([key, label]) => {
+      ${Object.entries(STATUSES).filter(([key]) => statusFilter === "All" || key === statusFilter).map(([key, label]) => {
         const col = visibleTasks.filter((t) => t.status === key);
         return `<div class="column" data-drop="${key}">
           <h3><span>${label}</span><span class="muted">${col.length}</span></h3>
@@ -239,7 +241,7 @@ function taskTable(tasks, extraColumn) {
 
 function renderBacklog() {
   const sprint = currentSprint();
-  const tasks = data.tasks.filter((t) => t.status !== "done" && !t.sprintId && isVisible(t) && inCategory(t));
+  const tasks = data.tasks.filter((t) => t.status !== "done" && !t.sprintId && isVisible(t) && inCategory(t) && inStatus(t));
   return `
     <div class="box">
       <h2>Full Backlog</h2>
@@ -255,7 +257,7 @@ function renderBacklog() {
 }
 
 function renderPrevious() {
-  const done = data.tasks.filter((t) => t.status === "done" && inCategory(t));
+  const done = data.tasks.filter((t) => t.status === "done" && inCategory(t) && inStatus(t));
   if (!done.length) return `<div class="box"><h2>Previous Backlog</h2><p class="muted">Done tasks will appear here.</p></div>`;
 
   // Group done tasks by the sprint they were finished in
@@ -277,7 +279,7 @@ function renderPrevious() {
 }
 
 function renderAll() {
-  const tasks = data.tasks.filter(inCategory).sort((a, b) => b.id - a.id);
+  const tasks = data.tasks.filter((t) => inCategory(t) && inStatus(t)).sort((a, b) => b.id - a.id);
   return `<div class="box"><h2>All Tasks</h2>${taskTable(tasks, (t) => {
     if (!isVisible(t)) return `<span class="muted">Scheduled ${t.showFrom}</span>`;
     if (t.status === "done") return `<span class="muted">Previous</span>`;
@@ -312,10 +314,10 @@ function renderModal() {
       <div class="modal-body">
         <h2>${t.id ? "Task " + taskNo(t) : "New task #" + data.nextTaskId}</h2>
         <div class="field"><label>Title</label><input name="title" value="${escapeHtml(t.title)}" required></div>
+        <div class="field"><label>Status</label>
+          <div class="pill-group">${Object.entries(STATUSES).map(([k, v]) => `<label><input type="radio" name="status" value="${k}" ${t.status === k ? "checked" : ""}> ${v}</label>`).join("")}</div>
+        </div>
         <div class="grid">
-          <div class="field"><label>Status</label>
-            <select name="status">${Object.entries(STATUSES).map(([k, v]) => `<option value="${k}" ${t.status === k ? "selected" : ""}>${v}</option>`).join("")}</select>
-          </div>
           <div class="field"><label>Progress %</label>
             <input type="number" name="progress" min="0" max="100" value="${t.progress}" ${t.status === "todo" || t.status === "done" ? "disabled" : ""}>
           </div>
@@ -572,6 +574,7 @@ document.addEventListener("change", (e) => {
     uploadFiles([...e.target.files]);
     e.target.value = "";
   }
+  if (e.target.name === "status-filter") { statusFilter = e.target.value; render(); }
   if (e.target.name === "category-filter") { categoryFilter = e.target.value; render(); }
   if (e.target.id === "importInput" && e.target.files[0]) {
     e.target.files[0].text().then((txt) => {
@@ -640,5 +643,7 @@ document.addEventListener("drop", (e) => {
 // ---------- start ----------
 $("#categoryFilter").innerHTML = ["All", ...CATEGORIES].map((c) => `
   <label><input type="radio" name="category-filter" value="${c}" ${c === "All" ? "checked" : ""}> ${c === "All" ? "All categories" : c}</label>`).join("");
+$("#statusFilter").innerHTML = [["All", "All statuses"], ...Object.entries(STATUSES)].map(([k, v]) => `
+  <label><input type="radio" name="status-filter" value="${k}" ${k === "All" ? "checked" : ""}> ${v}</label>`).join("");
 render();
 loadFromServer();
