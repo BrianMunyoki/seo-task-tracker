@@ -151,6 +151,7 @@ function sprintStats(tasks) {
 // ---------- rendering ----------
 function ensureProjects() {
   if (!data.projects || !data.projects.length) data.projects = ["General"];
+  if (!data.keywords) data.keywords = [];
   data.tasks.forEach((t) => { if (!t.project) t.project = data.projects[0]; });
   if (projectFilter !== "All" && !data.projects.includes(projectFilter)) projectFilter = "All";
 }
@@ -166,7 +167,9 @@ function render() {
   ensureProjects();
   renderProjectFilter();
   document.querySelectorAll("#tabs button").forEach((b) => b.classList.toggle("active", b.dataset.view === view));
-  const views = { sprint: renderSprint, backlog: renderBacklog, previous: renderPrevious, all: renderAll };
+  const views = { sprint: renderSprint, backlog: renderBacklog, previous: renderPrevious, all: renderAll, keywords: () => renderKeywords() };
+  // task filters are hidden on the Keywords page
+  document.querySelectorAll("#categoryFilter, #statusFilter").forEach((el) => (el.style.display = view === "keywords" ? "none" : ""));
   $("#main").innerHTML = views[view]();
 }
 
