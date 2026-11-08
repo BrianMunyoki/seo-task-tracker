@@ -3,8 +3,8 @@
 // If the server isn't available (e.g. opening index.html directly), it works offline in the browser only.
 
 const STORAGE_KEY = "seo-task-tracker";
-const CATEGORIES = ["Strategy", "Onsite Optimization", "Link Building", "AEO"];
-const STATUSES = { todo: "To Do", doing: "Doing", blocked: "Blocked", done: "Done" };
+const CATEGORIES = ["Strategy", "Technical SEO", "Onsite Optimization", "Link Building", "AEO"];
+const STATUSES = { todo: "To Do", doing: "Doing", done: "Done", blocked: "Blocked" };
 const POINTS = [1, 2, 3, 5, 8, 13, 21]; // Fibonacci story points
 
 let data = load();
@@ -130,6 +130,7 @@ function setStatus(task, status) {
     task.doneAt = null;
   }
   if (status === "doing" && task.progress === 0) task.progress = 10;
+  if (status !== "done" && task.progress >= 100) task.progress = 90;
 }
 
 function sprintStats(tasks) {
@@ -571,7 +572,7 @@ document.addEventListener("change", (e) => {
     uploadFiles([...e.target.files]);
     e.target.value = "";
   }
-  if (e.target.id === "categoryFilter") { categoryFilter = e.target.value; render(); }
+  if (e.target.name === "category-filter") { categoryFilter = e.target.value; render(); }
   if (e.target.id === "importInput" && e.target.files[0]) {
     e.target.files[0].text().then((txt) => {
       try { data = JSON.parse(txt); save(); alert("Backup imported"); }
@@ -637,6 +638,7 @@ document.addEventListener("drop", (e) => {
 });
 
 // ---------- start ----------
-$("#categoryFilter").innerHTML = ["All", ...CATEGORIES].map((c) => `<option value="${c}">${c === "All" ? "All categories" : c}</option>`).join("");
+$("#categoryFilter").innerHTML = ["All", ...CATEGORIES].map((c) => `
+  <label><input type="radio" name="category-filter" value="${c}" ${c === "All" ? "checked" : ""}> ${c === "All" ? "All categories" : c}</label>`).join("");
 render();
 loadFromServer();

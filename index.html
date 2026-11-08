@@ -10,18 +10,19 @@
   <header>
     <h1>SEO Task Tracker</h1>
     <div class="header-tools">
-      <select id="categoryFilter"></select>
       <form id="gotoForm"><input id="gotoInput" placeholder="Go to task #" /></form>
       <button id="newTaskBtn" class="primary">+ New task</button>
     </div>
   </header>
 
   <nav id="tabs">
+    <button data-view="previous">Previous Backlog</button>
     <button data-view="sprint">Current Backlog</button>
     <button data-view="backlog">Full Backlog</button>
-    <button data-view="previous">Previous Backlog</button>
     <button data-view="all">All Tasks</button>
   </nav>
+
+  <div id="categoryFilter" class="category-filter"></div>
 
   <main id="main"></main>
 
