@@ -5,7 +5,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { ACCESS } from "./_lib.js";
 
-const USE_LOCAL = !process.env.BLOB_READ_WRITE_TOKEN;
+const USE_LOCAL = !process.env.BLOB_READ_WRITE_TOKEN && !process.env.BLOB_STORE_ID;
 const LOCAL_DIR = path.join(process.cwd(), ".data");
 
 function localPath(pathname) {
