@@ -103,3 +103,6 @@ h3 { font-size: 14px; font-weight: 800; margin: 18px 0 8px; }
 .kw-chart .dot { fill: var(--red); }
 .kw-chart .dot-warn { fill: #e07b00; stroke: #fff; stroke-width: 1; }
 dialog:has(#kwDailyForm), dialog:has(.kw-chart), dialog:has(#kwLinkForm) { width: min(860px, 96vw); }
+
+.date-chip { align-self: center; font-weight: 700; background: var(--cream-dark); padding: 6px 12px; border-radius: 999px; white-space: nowrap; }
+.wrong-url { color: #b45309; font-weight: 600; }

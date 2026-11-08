@@ -331,6 +331,29 @@ function daysBetween(a, b) {
   return Math.round((new Date(b + "T00:00:00") - new Date(a + "T00:00:00")) / 86400000);
 }
 
+function urlHistoryHtml(k, prevUrl) {
+  const entries = kwEntries(k).filter((e) => e.url).reverse(); // newest first
+  return `
+    <h3>Ranking URLs</h3>
+    <form id="kwRankForm" class="add-row">
+      <input type="hidden" name="date" value="${today()}">
+      <span class="date-chip">Today · ${today()}</span>
+      <input type="url" name="url" required value="${escapeHtml(prevUrl || k.targetUrl)}" placeholder="URL ranking today" style="flex:1;min-width:240px">
+      <input type="number" name="pos" min="1" max="100" placeholder="Position (optional)" style="width:150px">
+      <button class="primary">Save</button>
+    </form>
+    ${entries.length ? `<div class="scroll-table"><table>
+      <tr><th>Date</th><th>Ranking URL</th><th>Position</th><th></th></tr>
+      ${entries.map((e) => `
+        <tr>
+          <td>${e.date}</td>
+          <td class="url-cell ${isWrongPage(k, e.url) ? "wrong-url" : ""}" title="${escapeHtml(e.url)}">${isWrongPage(k, e.url) ? "⚠ " : ""}${escapeHtml(e.url)}</td>
+          <td>${e.pos ?? "-"}</td>
+          <td><button type="button" class="small danger" data-kw-del-rank="${e.date}" title="Delete this day">✕</button></td>
+        </tr>`).join("")}
+    </table></div>` : `<p class="muted">No ranking URLs yet.</p>`}`;
+}
+
 function renderKeywordDetail() {
   const k = kwById(kwOpenId);
   if (!k) return $("#modal").close();
@@ -373,35 +396,11 @@ function renderKeywordDetail() {
         ${statBox("12-month avg", "yearly")}
       </div>
 
+      ${urlHistoryHtml(k, prevUrl)}
+
       <h3>Position history</h3>
       ${chartSvg(k)}
 
-      <h3>URLs ranking for this keyword (last 90 days)</h3>
-      ${urlRows.length ? `<table>${urlRows.map(([url, n]) => `
-        <tr><td class="url-cell">${escapeHtml(url)}</td><td>${n} day${n === 1 ? "" : "s"}</td>
-        <td>${isWrongPage(k, url) ? `<span class="badge-warn">⚠ not the optimization URL</span>` : `<span class="tag live">✓ optimization URL</span>`}</td></tr>`).join("")}</table>`
-        : `<p class="muted">No data yet.</p>`}
-
-      <h3>Add / update a day</h3>
-      <form id="kwRankForm" class="add-row">
-        <input type="date" name="date" value="${today()}" required>
-        <input type="number" name="pos" min="0" max="100" placeholder="Position" title="0 = not ranking" required style="width:110px">
-        <input type="url" name="url" value="${escapeHtml(prevUrl || k.targetUrl)}" placeholder="Ranking URL" style="flex:1;min-width:220px">
-        <button class="primary">Save</button>
-      </form>
-
-      <h3>Daily rankings</h3>
-      ${entries.length ? `<div class="scroll-table"><table>
-        <tr><th>Date</th><th>Position</th><th>Ranking URL</th><th></th><th></th></tr>
-        ${entries.slice().reverse().map((e) => `
-          <tr>
-            <td>${e.date}</td>
-            <td><b>${e.pos == null ? "Not ranking" : e.pos}</b></td>
-            <td class="url-cell">${escapeHtml(e.url) || "-"}</td>
-            <td>${e.url ? (isWrongPage(k, e.url) ? `<span class="badge-warn">⚠ wrong URL</span>` : `<span class="tag live">✓</span>`) : ""}</td>
-            <td><button type="button" class="small danger" data-kw-del-rank="${e.date}" title="Delete this day">✕</button></td>
-          </tr>`).join("")}
-      </table></div>` : `<p class="muted">No rankings yet.</p>`}
 
       <h3 id="kwLinks">Links to this keyword (${links.length})</h3>
       <form id="kwLinkForm">
@@ -496,8 +495,10 @@ document.addEventListener("submit", (e) => {
   if (form.id === "kwRankForm") {
     e.preventDefault();
     const f = form.elements;
-    const pos = Number(f.pos.value) > 0 ? Number(f.pos.value) : null;
-    setRank(kwById(kwOpenId), f.date.value, pos, pos == null ? "" : f.url.value.trim());
+    const k = kwById(kwOpenId);
+    const existing = kwEntries(k).find((x) => x.date === f.date.value);
+    const pos = Number(f.pos.value) > 0 ? Number(f.pos.value) : existing ? existing.pos : null;
+    setRank(k, f.date.value, pos, f.url.value.trim());
     save();
     renderKeywordDetail();
   }
