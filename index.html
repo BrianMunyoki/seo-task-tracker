@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SEO Task Tracker</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header>
+    <h1>SEO Task Tracker</h1>
+    <div class="header-tools">
+      <select id="categoryFilter"></select>
+      <form id="gotoForm"><input id="gotoInput" placeholder="Go to task #" /></form>
+      <button id="newTaskBtn" class="primary">+ New task</button>
+    </div>
+  </header>
+
+  <nav id="tabs">
+    <button data-view="sprint">Current Backlog</button>
+    <button data-view="backlog">Full Backlog</button>
+    <button data-view="previous">Previous Backlog</button>
+    <button data-view="all">All Tasks</button>
+  </nav>
+
+  <main id="main"></main>
+
+  <footer>
+    <button id="exportBtn">Export backup</button>
+    <label class="file-btn">Import backup<input type="file" id="importInput" accept=".json" hidden /></label>
+    <span id="syncStatus" class="muted"></span>
+  </footer>
+
+  <dialog id="modal"></dialog>
+
+  <script src="app.js"></script>
+</body>
+</html>
