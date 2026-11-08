@@ -11,6 +11,7 @@ const PROGRESS_STEPS = [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100];
 let data = load();
 let view = "sprint";
 let categoryFilter = "All";
+let projectFilter = "All";
 let statusFilter = "All";
 let editing = null; // task currently open in the modal
 let online = false; // true when the backend is reachable
@@ -100,7 +101,8 @@ const getSprint = (id) => data.sprints.find((s) => s.id === id);
 const currentSprint = () => getSprint(data.currentSprintId);
 const nextTaskNumber = () => Math.max(data.nextTaskId || 1, ...data.tasks.map((t) => t.id + 1));
 const isVisible = (t) => !t.showFrom || t.showFrom <= today(); // scheduled tasks stay hidden until their date
-const inCategory = (t) => categoryFilter === "All" || t.category === categoryFilter;
+const inCategory = (t) => (projectFilter === "All" || t.project === projectFilter) && (categoryFilter === "All" || t.category === categoryFilter);
+const defaultProject = () => (projectFilter !== "All" ? projectFilter : data.projects[0]);
 const inStatus = (t) => statusFilter === "All" || t.status === statusFilter;
 const isOverdue = (t) => t.deadline && t.status !== "done" && t.deadline < today();
 
@@ -147,7 +149,22 @@ function sprintStats(tasks) {
 }
 
 // ---------- rendering ----------
+function ensureProjects() {
+  if (!data.projects || !data.projects.length) data.projects = ["General"];
+  data.tasks.forEach((t) => { if (!t.project) t.project = data.projects[0]; });
+  if (projectFilter !== "All" && !data.projects.includes(projectFilter)) projectFilter = "All";
+}
+
+function renderProjectFilter() {
+  $("#projectFilter").innerHTML =
+    `<option value="All">All projects</option>` +
+    data.projects.map((p) => `<option value="${escapeHtml(p)}" ${p === projectFilter ? "selected" : ""}>${escapeHtml(p)}</option>`).join("") +
+    `<option value="__add__">+ Add project...</option>`;
+}
+
 function render() {
+  ensureProjects();
+  renderProjectFilter();
   document.querySelectorAll("#tabs button").forEach((b) => b.classList.toggle("active", b.dataset.view === view));
   const views = { sprint: renderSprint, backlog: renderBacklog, previous: renderPrevious, all: renderAll };
   $("#main").innerHTML = views[view]();
@@ -156,7 +173,7 @@ function render() {
 function card(t) {
   return `
     <div class="card" draggable="true" data-open="${t.id}" data-drag="${t.id}">
-      <div class="card-top"><span>${taskNo(t)}</span><span>${t.points || "-"} pts</span></div>
+      <div class="card-top"><span>${taskNo(t)} <span class="project-name">${escapeHtml(t.project)}</span></span><span>${t.points || "-"} pts</span></div>
       <div class="card-title">${escapeHtml(t.title)}</div>
       <span class="tag">${t.category}</span>
       ${t.deadline ? `<span class="muted ${isOverdue(t) ? "overdue" : ""}"> Due ${t.deadline}</span>` : ""}
@@ -226,11 +243,12 @@ function taskTable(tasks, extraColumn) {
   if (!tasks.length) return `<p class="muted">No tasks here.</p>`;
   return `
     <table>
-      <tr><th>#</th><th>Task</th><th>Category</th><th>Status</th><th>Pts</th><th>%</th><th>Deadline</th>${extraColumn ? "<th></th>" : ""}</tr>
+      <tr><th>#</th><th>Task</th><th>Project</th><th>Category</th><th>Status</th><th>Pts</th><th>%</th><th>Deadline</th>${extraColumn ? "<th></th>" : ""}</tr>
       ${tasks.map((t) => `
         <tr class="clickable" data-open="${t.id}">
           <td>${taskNo(t)}</td>
           <td>${escapeHtml(t.title)}</td>
+          <td>${escapeHtml(t.project)}</td>
           <td><span class="tag">${t.category}</span></td>
           <td>${STATUSES[t.status]}</td>
           <td>${t.points || "-"}</td>
@@ -297,7 +315,7 @@ function openTask(id, defaults = {}) {
 
   editing = existing
     ? JSON.parse(JSON.stringify(existing))
-    : { id: null, title: "", desc: "", category: categoryFilter !== "All" ? categoryFilter : CATEGORIES[0],
+    : { id: null, title: "", desc: "", category: categoryFilter !== "All" ? categoryFilter : CATEGORIES[0], project: defaultProject(),
         status: "todo", progress: 0, points: 0, deadline: "", showFrom: "", sprintId: null,
         links: [], notes: [], files: [], ...defaults };
   editing.files = editing.files || [];
@@ -323,6 +341,9 @@ function renderModal() {
           </div>
           <div class="field"><label>Story points</label>
             <select name="points"><option value="0">-</option>${POINTS.map((p) => `<option ${t.points === p ? "selected" : ""}>${p}</option>`).join("")}</select>
+          </div>
+          <div class="field"><label>Project</label>
+            <select name="project">${data.projects.map((p) => `<option ${t.project === p ? "selected" : ""}>${escapeHtml(p)}</option>`).join("")}</select>
           </div>
           <div class="field"><label>Category</label>
             <select name="category">${CATEGORIES.map((c) => `<option ${t.category === c ? "selected" : ""}>${c}</option>`).join("")}</select>
@@ -437,6 +458,7 @@ function saveTask(form) {
   const t = editing;
   t.title = f.title.value.trim();
   t.category = f.category.value;
+  t.project = f.project.value;
   t.points = Number(f.points.value);
   t.deadline = f.deadline.value;
   t.showFrom = f.showFrom.value;
@@ -572,6 +594,17 @@ document.addEventListener("change", (e) => {
     e.target.value = "";
   }
   if (e.target.name === "status-filter") { statusFilter = e.target.value; render(); }
+  if (e.target.id === "projectFilter") {
+    if (e.target.value === "__add__") {
+      const name = (prompt("New project name (e.g. a client):") || "").trim();
+      if (name && !data.projects.includes(name)) data.projects.push(name);
+      if (name) projectFilter = name;
+      save();
+    } else {
+      projectFilter = e.target.value;
+      render();
+    }
+  }
   if (e.target.name === "category-filter") { categoryFilter = e.target.value; render(); }
   if (e.target.id === "importInput" && e.target.files[0]) {
     e.target.files[0].text().then((txt) => {
@@ -599,7 +632,7 @@ document.addEventListener("submit", (e) => {
     const id = nextTaskNumber();
     data.nextTaskId = id + 1;
     data.tasks.push({
-      id, title: f.title.value.trim(), desc: "", category: f.category.value,
+      id, title: f.title.value.trim(), desc: "", category: f.category.value, project: defaultProject(),
       status: "todo", progress: 0, points: Number(f.points.value), deadline: "", showFrom: "",
       sprintId: null, links: [], notes: [], files: [],
     });

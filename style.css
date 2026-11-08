@@ -79,3 +79,6 @@ footer { display: flex; gap: 8px; align-items: center; padding: 10px 24px 30px; 
 .category-filter label:hover, .pill-group label:hover { border-color: var(--red); }
 .field .pill-group label { display: flex; margin: 0; font-size: 13px; }
 .field .pill-group input { width: auto; }
+
+#projectFilter { font-weight: 700; border-color: var(--red); color: var(--red-dark); min-width: 170px; }
+.project-name { color: var(--muted); font-weight: 600; margin-left: 4px; }
